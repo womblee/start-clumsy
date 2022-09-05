@@ -1,9 +1,7 @@
 #pragma comment(lib, "winmm.lib")
 
-#include <iostream>
 #include <Windows.h>
 #include <thread>
-#include "INIReader.h"
 #include <random>
 
 void ThrowError(const char* Error)
@@ -19,36 +17,25 @@ void ThrowError(const char* Error)
 	return;
 }
 
-BOOLEAN PressEnter()
+BOOLEAN Elevated()
 {
-	auto Input = INPUT();
-	RtlZeroMemory(&Input, sizeof(Input));
+	BOOL fRet = FALSE;
+	HANDLE hToken = NULL;
 
-	char Buffer[120] = { 0 };
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+	{
+		TOKEN_ELEVATION Elevation;
+		DWORD cbSize = sizeof(TOKEN_ELEVATION);
+		if (GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize))
+		{
+			fRet = Elevation.TokenIsElevated;
+		}
+	}
 
-	GetLocaleInfoA(LOCALE_USER_DEFAULT, LOCALE_ILANGUAGE, Buffer, sizeof(Buffer));
-	const auto hKeyboardLayout = LoadKeyboardLayoutA(Buffer, KLF_ACTIVATE);
+	if (hToken)
+		CloseHandle(hToken);
 
-	const auto EnterVk = VkKeyScanExA('\n', hKeyboardLayout);
-	const auto EnterVKey = MapVirtualKeyA(LOBYTE(EnterVk), 0);
-
-	Input.type = INPUT_KEYBOARD;
-	Input.ki.dwFlags = KEYEVENTF_SCANCODE;
-	Input.ki.wScan = EnterVKey;
-
-	SendInput(1, &Input, sizeof(Input));
-	RtlZeroMemory(&Input, sizeof(Input));
-
-	std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-	Input.type = INPUT_KEYBOARD;
-	Input.ki.dwFlags = KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP;
-	Input.ki.wScan = EnterVKey;
-
-	SendInput(1, &Input, sizeof(Input));
-	RtlZeroMemory(&Input, sizeof(Input));
-
-	return TRUE;
+	return fRet;
 }
 
 BOOLEAN MouseClick()
@@ -100,54 +87,21 @@ BOOLEAN LogKeyPress(const char* key, int color)
 
 int main()
 {
-	const auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleTextAttribute(hConsole, 15);
-
-	BOOL isMember;
-	PSID administratorsGroup = NULL;
-	SID_IDENTIFIER_AUTHORITY SIDAuthNT =
-		SECURITY_NT_AUTHORITY;
-
-	if (!AllocateAndInitializeSid(&SIDAuthNT, 2,
-		SECURITY_BUILTIN_DOMAIN_RID, DOMAIN_ALIAS_RID_ADMINS,
-		0, 0, 0, 0, 0, 0,
-		&administratorsGroup))
-	{
-		return -1;
-	}
-
-	if (!CheckTokenMembership(nullptr, administratorsGroup, &isMember))
-	{
-		return -1;
-	}
-
-	if (!isMember)
+	// Administrator
+	if (!Elevated())
 	{
 		ThrowError("[ERROR] Software needs admin rights to run properly!");
 		return -1;
 	}
 
-	INIReader cursor_positions("cursor_positions.ini");
+	// Total uses
+	int TotalUses = 0;
 
-	if (cursor_positions.ParseError() < 0) {
-		ThrowError("[LOG] INI File couldn't be parsed [cursor_positions.ini]");
-		return -1;
-	}
-
-	int globalx = cursor_positions.GetInteger("Ints", "c1", 51);
-	int globaly = cursor_positions.GetInteger("Ints", "c2", 102);
-
-	printf("[LOG] Sucessfully parsed INI file!\n\n");
-
-	int total_uses = 0;
-
-	printf("F9 - Setup best config | F10 - Enable/Disable | F11 - Kill process | F12 - Get current cursor pos\n\n");
-
-	
+	// Windows
     auto GameWindow = FindWindowA("grcWindow", "Grand Theft Auto V");
     auto Clumsy = FindWindowA(NULL, "clumsy 0.2");
 	
-
+	// First one
 	if (!GameWindow == NULL)
 	{
 		printf("[LOG] Found GTAV window\n");
@@ -158,6 +112,7 @@ int main()
 		return -1;
 	}
 
+	// First one
 	if (!Clumsy == NULL)
 	{
 		printf("[LOG] Found Clumsy window\n\n");
@@ -168,22 +123,30 @@ int main()
 		return -1;
 	}
 
+	// Message
+	printf("F9 - Setup best config | F10 - Enable/Disable | F11 - Kill process | F12 - Get current cursor pos\n\n");
+
+	// No messing up
 	SetWindowPos(Clumsy, NULL, 0, 0, 0, 0, SWP_NOSIZE);
 
 	while (TRUE)
 	{
+		// Validate
 		if (Clumsy == NULL)
 		{
 			ThrowError("[ERROR] Clumsy got closed, aborting...");
 			return -1;
 		}
+
 		if (GameWindow == NULL)
 		{
 			ThrowError("[ERROR] GTAV got closed, aborting...");
 			return -1;
 		}
 
-		if (GetAsyncKeyState(VK_F9)) {
+		if (GetAsyncKeyState(VK_F9))
+		{
+			// Sleep
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
 			LogKeyPress("F9", 14);
@@ -286,7 +249,7 @@ int main()
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-			// all receiving packets
+			// All receiving packets
 			SetCursorPos(558, 100);
 			MouseClick();
 
@@ -295,19 +258,20 @@ int main()
 
 			SetCursorPos(399, 162);
 			MouseClick();
-
-			//Hey skid
 		}
-		if (GetAsyncKeyState(VK_F10)) {
+
+		if (GetAsyncKeyState(VK_F10))
+		{
 			LogKeyPress("F10", 14);
 
-			total_uses = total_uses + 1;
+			TotalUses = TotalUses + 1;
 
-			printf("[STATS] Total uses: %d\n", total_uses);
+			printf("[STATS] Total uses: %d\n", TotalUses);
 
 			SetForegroundWindow(Clumsy);
 
-			SetCursorPos(globalx, globaly);
+			// Configure this
+			SetCursorPos(51, 102);
 			MouseClick();
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(400));
@@ -319,16 +283,17 @@ int main()
 		{
 			TerminateProcess(GetCurrentProcess(), 0);
 		}
-		if (GetAsyncKeyState(VK_F12)) {
+
+		if (GetAsyncKeyState(VK_F12))
+		{
 			POINT point;
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
 			LogKeyPress("F12", 14);
 
-			if (GetCursorPos(&point)) {
+			if (GetCursorPos(&point))
 				printf("[LOG] Cursor Pos: %d, %d\n", point.x, point.y);
-			}
 		}
 	}
 
