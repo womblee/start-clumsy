@@ -96,8 +96,8 @@ int main()
 	int TotalUses = 0;
 
 	// Windows
-    auto GameWindow = FindWindowA("grcWindow", "Grand Theft Auto V");
-    auto Clumsy = FindWindowA(NULL, "clumsy 0.2");
+        auto GameWindow = FindWindowA("grcWindow", "Grand Theft Auto V");
+        auto Clumsy = FindWindowA(NULL, "clumsy 0.2");
 	
 	// First one
 	if (!GameWindow == NULL)
