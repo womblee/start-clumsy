@@ -1,5 +1,3 @@
-#pragma comment(lib, "winmm.lib")
-
 #include <Windows.h>
 #include <thread>
 #include <random>
@@ -281,16 +279,18 @@ int main()
 
 		if (GetAsyncKeyState(VK_F11))
 		{
+			// Junk
 			TerminateProcess(GetCurrentProcess(), 0);
 		}
 
 		if (GetAsyncKeyState(VK_F12))
 		{
-			POINT point;
-
 			std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
 			LogKeyPress("F12", 14);
+
+			// For configuring
+			POINT point;
 
 			if (GetCursorPos(&point))
 				printf("[LOG] Cursor Pos: %d, %d\n", point.x, point.y);
